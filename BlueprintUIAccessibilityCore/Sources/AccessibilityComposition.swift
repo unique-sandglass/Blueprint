@@ -136,6 +136,29 @@ extension AccessibilityComposition {
             interactiveChildren = allInteractiveChildren.isEmpty ? nil : allInteractiveChildren
         }
 
+        // returns a new representation with the combined accessibility, favoring the accessibility of the receiver.
+        internal func merge(with merge: AccessibilityComposition.CompositeRepresentation?) -> AccessibilityComposition.CompositeRepresentation {
+            guard let merge else { return self }
+            var new = AccessibilityComposition.CompositeRepresentation([], invalidator: invalidator)
+            new.label = [label, merge.label].joinedAccessibilityString()
+            new.value = [value, merge.value].joinedAccessibilityString()
+            new.hint = [hint, merge.hint].joinedAccessibilityString()
+            new.identifier = [identifier, merge.identifier].joinedAccessibilityString()
+
+            new.traits = traits.union(merge.traits)
+
+            var newActions = actions
+            newActions.customActions += merge.allActions
+            new.actions = newActions
+
+            new.rotors = rotors + merge.rotors
+            new.interactiveChildren = interactiveChildren + merge.interactiveChildren
+
+            new.activationPoint = activationPoint ?? merge.activationPoint
+
+            return new
+        }
+
         internal func override(with override: AccessibilityComposition.CompositeRepresentation?) -> AccessibilityComposition.CompositeRepresentation {
             guard let override else { return self }
             var new = AccessibilityComposition.CompositeRepresentation([], invalidator: invalidator)
@@ -315,10 +338,13 @@ extension AccessibilityComposition {
 
 extension AccessibilityComposition {
 
-    public final class CombinableView: UIView, AXCustomContentProvider, AccessibilityCombinable {
+    public class CombinableView: UIView, AXCustomContentProvider, AccessibilityCombinable {
 
         // An accessibility representation with values that should override the combined representation
         public var overrideValues: AccessibilityComposition.CompositeRepresentation? = nil
+
+        // An accessibility representation with values that should be merged with the combined representation
+        public var mergeValues: AccessibilityComposition.CompositeRepresentation? = nil
 
         // If enabled, a combined view with only a single interactive child element will include the child in the accessibility representation rather than as a custom action. E.G. a button and label become a single button element.
         public var mergeInteractiveSingleChild: Bool = true
@@ -387,10 +413,12 @@ extension AccessibilityComposition {
                 root: self,
                 userInterfaceIdiom: interfaceidiom
             )
-            let combined = combineChildren(filter: customFilter, sorting: sorting)
+            let accessibility = combineChildren(filter: customFilter, sorting: sorting)
+                .override(with: overrideValues)
+                .merge(with: mergeValues)
 
             applyAccessibility(
-                combined.override(with: overrideValues),
+                accessibility,
                 mergeInteractiveSingleChild: mergeInteractiveSingleChild
             )
 
