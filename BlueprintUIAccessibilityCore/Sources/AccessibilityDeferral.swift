@@ -147,7 +147,6 @@ extension Element {
     }
 
     /// Creates a `ReceiverContainer` element to expose the deferred accessibility.
-    /// TODO Consider using the identifiers?
     public func deferredAccessibilityReceiver(identifiers: [AnyHashable]) -> AccessibilityDeferral.ReceiverContainer {
         AccessibilityDeferral.ReceiverContainer(wrapping: { self })
     }
